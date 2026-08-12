@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 28d967ee32de6054b900676de56fc543
+guid: 2ec70a44a3f69394bbb30246735fcc62
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 1568078927724888504
-    second: Backgammon black and white-01_0
+      213: -4155836978605981445
+    second: Backgammon White checker_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Backgammon black and white-01_0
+      name: Backgammon White checker_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 3000
-        height: 3000
+        width: 200
+        height: 200
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 8b141da0a7fe2c510800000000000000
-      internalID: 1568078927724888504
+      spriteID: bf002c959408356c0800000000000000
+      internalID: -4155836978605981445
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Backgammon black and white-01_0: 1568078927724888504
+      Backgammon White checker_0: -4155836978605981445
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
