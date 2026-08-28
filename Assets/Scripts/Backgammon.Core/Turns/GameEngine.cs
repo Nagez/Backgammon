@@ -35,6 +35,13 @@ namespace Backgammon.Core
         /// <summary>Raised after every roll, move, or turn change, so a presentation layer can refresh from <see cref="Board"/>.</summary>
         public event Action Changed;
 
+        /// <summary>
+        /// Raised when a turn auto-ends because no legal move exists for it — either right after
+        /// rolling, or mid-turn with a die left that can't be played. Fires before the turn
+        /// actually changes, so a presentation layer can tell the player why nothing happened.
+        /// </summary>
+        public event Action<Player, Dice, IReadOnlyList<int>> NoLegalMoves;
+
         public GameEngine(Player startingPlayer)
         {
             Board = BoardState.CreateStartingPosition();
@@ -68,10 +75,7 @@ namespace Backgammon.Core
             _remainingDice = MoveGenerator.ExpandDice(CurrentDice.Value).ToList();
             Phase = GamePhase.MovesRemaining;
 
-            if (GetLegalMoves().Count == 0)
-            {
-                EndTurn();
-            }
+            EndTurnIfStuck();
 
             Changed?.Invoke();
         }
@@ -99,12 +103,27 @@ namespace Backgammon.Core
                 return;
             }
 
-            if (_remainingDice.Count == 0 || GetLegalMoves().Count == 0)
-            {
-                EndTurn();
-            }
+            EndTurnIfStuck();
 
             Changed?.Invoke();
+        }
+
+        // Ends the turn outright once its dice are used up, or auto-passes (with notice) if dice
+        // remain but none of them have a legal move — e.g. rolling into a fully blocked position,
+        // or playing one die of a pair and finding the other unplayable.
+        private void EndTurnIfStuck()
+        {
+            if (_remainingDice.Count == 0)
+            {
+                EndTurn();
+                return;
+            }
+
+            if (GetLegalMoves().Count == 0)
+            {
+                NoLegalMoves?.Invoke(CurrentPlayer, CurrentDice.Value, new List<int>(_remainingDice));
+                EndTurn();
+            }
         }
 
         private void EndTurn()

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Backgammon.Core;
 using UnityEngine;
 
@@ -15,6 +16,7 @@ namespace Backgammon.Unity
         private BoardView _boardView;
         private GameEngine _engine;
         private System.Random _random;
+        private string _pendingNotice;
 
         private void Awake()
         {
@@ -26,6 +28,7 @@ namespace Backgammon.Unity
             _random = new System.Random();
             _engine = new GameEngine(Player.White);
             _engine.Changed += HandleEngineChanged;
+            _engine.NoLegalMoves += HandleNoLegalMoves;
             turnHud.RollClicked += HandleRollClicked;
 
             RenderAll();
@@ -36,6 +39,7 @@ namespace Backgammon.Unity
             if (_engine != null)
             {
                 _engine.Changed -= HandleEngineChanged;
+                _engine.NoLegalMoves -= HandleNoLegalMoves;
             }
             turnHud.RollClicked -= HandleRollClicked;
         }
@@ -43,14 +47,14 @@ namespace Backgammon.Unity
         /// <summary>Whose turn it currently is.</summary>
         public Player CurrentPlayer => _engine.CurrentPlayer;
 
-        /// <summary>Scratch/debug only — not meant to stick around past input troubleshooting.</summary>
-        public GamePhase DebugPhase => _engine.Phase;
-
         /// <summary>True if the given player has a checker waiting on the bar.</summary>
         public bool HasCheckerOnBar(Player player) => _engine.Board.GetBar(player) > 0;
 
         /// <summary>True if the given player owns at least one checker on the given point.</summary>
         public bool OwnsCheckerAt(int pointIndex, Player player) => _engine.Board.GetPoint(pointIndex).Owner == player;
+
+        /// <summary>The moves legal to play right now; empty outside the current player's move phase.</summary>
+        public IReadOnlyList<Move> GetLegalMoves() => _engine.GetLegalMoves();
 
         /// <summary>
         /// Attempts to play a move from the given origin (null = bar) to the given destination.
@@ -75,6 +79,11 @@ namespace Backgammon.Unity
             _engine.RollDice(_random);
         }
 
+        private void HandleNoLegalMoves(Player player, Dice dice, IReadOnlyList<int> stuckDice)
+        {
+            _pendingNotice = $"{player} rolled {dice.Die1}-{dice.Die2} but had no legal move — turn passed.";
+        }
+
         private void HandleEngineChanged()
         {
             RenderAll();
@@ -83,7 +92,8 @@ namespace Backgammon.Unity
         private void RenderAll()
         {
             _boardView.Render(_engine.Board);
-            turnHud.Render(_engine);
+            turnHud.Render(_engine, _pendingNotice);
+            _pendingNotice = null;
         }
     }
 }

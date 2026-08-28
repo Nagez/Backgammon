@@ -24,7 +24,11 @@ namespace Backgammon.Unity
             rollButton.onClick.AddListener(() => RollClicked?.Invoke());
         }
 
-        public void Render(GameEngine engine)
+        /// <param name="notice">
+        /// An extra one-off line to show alongside the normal status — e.g. that the previous
+        /// turn auto-passed with no legal move. Shown once, for this render only.
+        /// </param>
+        public void Render(GameEngine engine, string notice = null)
         {
             switch (engine.Phase)
             {
@@ -43,6 +47,11 @@ namespace Backgammon.Unity
                     statusText.text = $"{engine.Winner} wins ({engine.WinResult})!";
                     rollButton.interactable = false;
                     break;
+            }
+
+            if (!string.IsNullOrEmpty(notice))
+            {
+                statusText.text = $"{notice}\n{statusText.text}";
             }
         }
     }

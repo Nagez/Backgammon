@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Backgammon.Core;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -70,6 +71,29 @@ namespace Backgammon.Unity
             {
                 TrySelectOrigin(worldPosition);
             }
+
+            RefreshHighlights();
+        }
+
+        private void RefreshHighlights()
+        {
+            if (!_hasSelection)
+            {
+                boardView.ClearHighlights();
+                return;
+            }
+
+            Player current = gameController.CurrentPlayer;
+            var targets = new List<int>();
+            foreach (Move move in gameController.GetLegalMoves())
+            {
+                if (move.From == _selectedFrom && !targets.Contains(move.To))
+                {
+                    targets.Add(move.To);
+                }
+            }
+
+            boardView.SetHighlights(current, _selectedFrom, targets);
         }
 
         private void TrySelectOrigin(Vector2 worldPosition)
@@ -85,7 +109,6 @@ namespace Backgammon.Unity
             }
 
             int? pointIndex = boardView.FindPointIndex(worldPosition);
-            Debug.Log($"[InputController] origin attempt: barOwner={barOwner}, pointIndex={pointIndex}, owns={(pointIndex.HasValue ? gameController.OwnsCheckerAt(pointIndex.Value, current).ToString() : "n/a")}");
             if (pointIndex.HasValue && gameController.OwnsCheckerAt(pointIndex.Value, current))
             {
                 _hasSelection = true;
@@ -102,8 +125,6 @@ namespace Backgammon.Unity
             {
                 targetIndex = PlayerRules.BearOffTarget(current);
             }
-
-            Debug.Log($"[InputController] target attempt: from={_selectedFrom}, targetIndex={targetIndex}");
 
             _hasSelection = false;
 

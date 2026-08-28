@@ -22,6 +22,12 @@ namespace Backgammon.Unity
         [SerializeField] private float checkerDiameterToSpacingRatio = 0.85f;
         [SerializeField] private float checkerStackStepRatio = 0.8f;
 
+        [Header("Legal-move highlighting")]
+        [SerializeField] private Color originHighlightColor = new Color(0.2f, 0.6f, 1f, 0.5f);
+        [SerializeField] private Color targetHighlightColor = new Color(0.3f, 1f, 0.3f, 0.5f);
+        [SerializeField] private Color noLegalMoveHighlightColor = new Color(1f, 0.2f, 0.2f, 0.5f);
+        [SerializeField] private float highlightDiameterToSpacingRatio = 1.05f;
+
         [Header("Point Anchor Generator (world units, from board center)")]
         [Tooltip("Distance between two adjacent points within the same group of 6.")]
         [Range(0.1f, 2f)]
@@ -45,10 +51,14 @@ namespace Backgammon.Unity
         private Transform[] _pointAnchors;
         private Transform[] _barAnchors;
         private Transform[] _offAnchors;
-        private Transform _checkersParent;
         private float _checkerDiameter;
         private float _hitRadius;
+        private float _highlightDiameter;
+        private Sprite _highlightSprite;
+        private Transform _checkersParent;
+        private Transform _highlightsParent;
         private readonly List<GameObject> _checkerObjects = new List<GameObject>();
+        private readonly List<GameObject> _highlightObjects = new List<GameObject>();
 
         private void Awake()
         {
@@ -57,12 +67,21 @@ namespace Backgammon.Unity
             float spacing = Vector3.Distance(_pointAnchors[0].position, _pointAnchors[1].position);
             _checkerDiameter = spacing * checkerDiameterToSpacingRatio;
             _hitRadius = spacing * 0.5f;
+            _highlightDiameter = spacing * highlightDiameterToSpacingRatio;
+            _highlightSprite = CreateHighlightSprite();
 
             _checkersParent = transform.Find("Checkers");
             if (_checkersParent == null)
             {
                 _checkersParent = new GameObject("Checkers").transform;
                 _checkersParent.SetParent(transform, false);
+            }
+
+            _highlightsParent = transform.Find("Highlights");
+            if (_highlightsParent == null)
+            {
+                _highlightsParent = new GameObject("Highlights").transform;
+                _highlightsParent.SetParent(transform, false);
             }
         }
 
@@ -103,6 +122,82 @@ namespace Backgammon.Unity
                     SpawnChecker(offAnchor, stack, player);
                 }
             }
+        }
+
+        /// <summary>
+        /// Redraws the highlight markers: one on the selected origin (null = bar), and one on
+        /// every legal destination for it — a real point index, or a player's bear-off sentinel
+        /// (see <see cref="PlayerRules.BearOffTarget"/>) to mark their off tray.
+        /// </summary>
+        public void SetHighlights(Player currentPlayer, int? selectedFrom, IReadOnlyList<int> legalTargets)
+        {
+            ClearHighlights();
+
+            Transform originAnchor = selectedFrom.HasValue ? _pointAnchors[selectedFrom.Value] : _barAnchors[(int)currentPlayer];
+            Color originColor = legalTargets.Count == 0 ? noLegalMoveHighlightColor : originHighlightColor;
+            SpawnHighlight(originAnchor, originColor);
+
+            foreach (int target in legalTargets)
+            {
+                Transform targetAnchor = ResolveAnchor(target, currentPlayer);
+                SpawnHighlight(targetAnchor, targetHighlightColor);
+            }
+        }
+
+        /// <summary>Removes every highlight marker.</summary>
+        public void ClearHighlights()
+        {
+            foreach (GameObject highlight in _highlightObjects)
+            {
+                Destroy(highlight);
+            }
+            _highlightObjects.Clear();
+        }
+
+        private Transform ResolveAnchor(int pointOrSentinel, Player player)
+        {
+            if (pointOrSentinel >= 0 && pointOrSentinel < BoardState.PointCount)
+            {
+                return _pointAnchors[pointOrSentinel];
+            }
+            return _offAnchors[(int)player];
+        }
+
+        private void SpawnHighlight(Transform anchor, Color color)
+        {
+            var highlight = new GameObject("Highlight");
+            highlight.transform.SetParent(_highlightsParent, true);
+            highlight.transform.position = anchor.position;
+
+            var renderer = highlight.AddComponent<SpriteRenderer>();
+            renderer.sprite = _highlightSprite;
+            renderer.color = color;
+            renderer.sortingOrder = 1;
+
+            float scale = _highlightDiameter / _highlightSprite.bounds.size.x;
+            highlight.transform.localScale = new Vector3(scale, scale, 1f);
+
+            _highlightObjects.Add(highlight);
+        }
+
+        private static Sprite CreateHighlightSprite()
+        {
+            const int size = 64;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+            Vector2 center = new Vector2((size - 1) / 2f, (size - 1) / 2f);
+            float radius = size / 2f;
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float distance = Vector2.Distance(new Vector2(x, y), center);
+                    texture.SetPixel(x, y, new Color(1f, 1f, 1f, distance <= radius ? 1f : 0f));
+                }
+            }
+            texture.Apply();
+
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
         }
 
         /// <summary>The 0-23 point whose stack column contains the given world position, or null.</summary>
@@ -212,7 +307,7 @@ namespace Backgammon.Unity
 
             var renderer = checker.AddComponent<SpriteRenderer>();
             renderer.sprite = owner == Player.White ? whiteCheckerSprite : blackCheckerSprite;
-            renderer.sortingOrder = 1;
+            renderer.sortingOrder = 2;
 
             float nativeSize = renderer.sprite.bounds.size.x;
             float scale = nativeSize > 0f ? _checkerDiameter / nativeSize : 1f;
@@ -349,7 +444,9 @@ namespace Backgammon.Unity
             float x = (rightGroup ? groupCenterX : -groupCenterX) + localOffset;
             float y = topRow ? generatorRowInset : -generatorRowInset;
 
-            return new Vector3(x, y, 0f);
+            // Negating both axes is a 180-degree rotation about board center, so point 0 lands
+            // top-right instead of bottom-left (and every other index rotates the same way).
+            return new Vector3(-x, -y, 0f);
         }
 
         // Sits in the bar gap at board center; White stacks above the center line, Black below,
