@@ -40,6 +40,36 @@ namespace Backgammon.Unity
             turnHud.RollClicked -= HandleRollClicked;
         }
 
+        /// <summary>Whose turn it currently is.</summary>
+        public Player CurrentPlayer => _engine.CurrentPlayer;
+
+        /// <summary>Scratch/debug only — not meant to stick around past input troubleshooting.</summary>
+        public GamePhase DebugPhase => _engine.Phase;
+
+        /// <summary>True if the given player has a checker waiting on the bar.</summary>
+        public bool HasCheckerOnBar(Player player) => _engine.Board.GetBar(player) > 0;
+
+        /// <summary>True if the given player owns at least one checker on the given point.</summary>
+        public bool OwnsCheckerAt(int pointIndex, Player player) => _engine.Board.GetPoint(pointIndex).Owner == player;
+
+        /// <summary>
+        /// Attempts to play a move from the given origin (null = bar) to the given destination.
+        /// Returns false without changing anything if no legal move matches.
+        /// </summary>
+        public bool TryPlayMove(int? from, int to)
+        {
+            foreach (Move candidate in _engine.GetLegalMoves())
+            {
+                if (candidate.From == from && candidate.To == to)
+                {
+                    _engine.ApplyMove(candidate);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void HandleRollClicked()
         {
             _engine.RollDice(_random);

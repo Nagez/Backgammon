@@ -47,6 +47,7 @@ namespace Backgammon.Unity
         private Transform[] _offAnchors;
         private Transform _checkersParent;
         private float _checkerDiameter;
+        private float _hitRadius;
         private readonly List<GameObject> _checkerObjects = new List<GameObject>();
 
         private void Awake()
@@ -55,6 +56,7 @@ namespace Backgammon.Unity
 
             float spacing = Vector3.Distance(_pointAnchors[0].position, _pointAnchors[1].position);
             _checkerDiameter = spacing * checkerDiameterToSpacingRatio;
+            _hitRadius = spacing * 0.5f;
 
             _checkersParent = transform.Find("Checkers");
             if (_checkersParent == null)
@@ -101,6 +103,61 @@ namespace Backgammon.Unity
                     SpawnChecker(offAnchor, stack, player);
                 }
             }
+        }
+
+        /// <summary>The 0-23 point whose stack column contains the given world position, or null.</summary>
+        public int? FindPointIndex(Vector2 worldPosition)
+        {
+            for (int index = 0; index < _pointAnchors.Length; index++)
+            {
+                if (IsWithinStackColumn(_pointAnchors[index].position, worldPosition))
+                {
+                    return index;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>The player whose bar stack column contains the given world position, or null.</summary>
+        public Player? FindBarOwner(Vector2 worldPosition)
+        {
+            foreach (Player player in new[] { Player.White, Player.Black })
+            {
+                if (IsWithinStackColumn(_barAnchors[(int)player].position, worldPosition))
+                {
+                    return player;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>The player whose borne-off tray column contains the given world position, or null.</summary>
+        public Player? FindOffOwner(Vector2 worldPosition)
+        {
+            foreach (Player player in new[] { Player.White, Player.Black })
+            {
+                if (IsWithinStackColumn(_offAnchors[(int)player].position, worldPosition))
+                {
+                    return player;
+                }
+            }
+            return null;
+        }
+
+        // Checkers stack outward from an anchor toward the board's center line (see SpawnChecker's
+        // stackDirection), so a click anywhere in that column — not just on the anchor itself —
+        // should count as a hit on whatever checker/point/tray it belongs to.
+        private bool IsWithinStackColumn(Vector3 anchorPosition, Vector2 worldPosition)
+        {
+            if (Mathf.Abs(anchorPosition.x - worldPosition.x) > _hitRadius)
+            {
+                return false;
+            }
+
+            bool topHalf = anchorPosition.y >= 0f;
+            return topHalf
+                ? worldPosition.y <= anchorPosition.y + _hitRadius && worldPosition.y >= -_hitRadius
+                : worldPosition.y >= anchorPosition.y - _hitRadius && worldPosition.y <= _hitRadius;
         }
 
         private void CollectAnchors()
