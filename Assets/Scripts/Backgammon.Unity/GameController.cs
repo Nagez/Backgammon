@@ -12,6 +12,7 @@ namespace Backgammon.Unity
     public class GameController : MonoBehaviour
     {
         [SerializeField] private TurnHudView turnHud;
+        [SerializeField] private DiceView diceView;
 
         private BoardView _boardView;
         private GameEngine _engine;
@@ -77,6 +78,11 @@ namespace Backgammon.Unity
         private void HandleRollClicked()
         {
             _engine.RollDice(_random);
+
+            if (_engine.CurrentDice.HasValue)
+            {
+                diceView.PlayRoll(_engine.CurrentDice.Value.Die1, _engine.CurrentDice.Value.Die2);
+            }
         }
 
         private void HandleNoLegalMoves(Player player, Dice dice, IReadOnlyList<int> stuckDice)

@@ -129,7 +129,9 @@ namespace Backgammon.Core
         private void EndTurn()
         {
             CurrentPlayer = CurrentPlayer == Player.White ? Player.Black : Player.White;
-            CurrentDice = null;
+            // CurrentDice is intentionally left as-is: it becomes "the last dice rolled" rather
+            // than "dice rolled this turn," so a presentation layer can still read what was
+            // rolled even when a turn auto-passes with no legal move.
             _remainingDice = new List<int>();
             Phase = GamePhase.WaitingForRoll;
         }
