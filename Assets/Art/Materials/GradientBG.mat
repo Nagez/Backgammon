@@ -41,13 +41,13 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Angle: 150
+    - _Angle: 109
     - _EnableExternalAlpha: 0
     - _ZWrite: 0
     m_Colors:
-    - _BottomColor: {r: 0.10891321, g: 0.2594338, b: 0.19492498, a: 1}
+    - _BottomColor: {r: 0.29202995, g: 0.4952829, b: 0.3767187, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
-    - _TopColor: {r: 0.18307216, g: 0.3207546, b: 0.26174784, a: 1}
+    - _TopColor: {r: 0.15379128, g: 0.3396225, b: 0.28121838, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
