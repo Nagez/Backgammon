@@ -26,6 +26,7 @@ namespace Backgammon.Unity
         [SerializeField] private Color originHighlightColor = new Color(0.2f, 0.6f, 1f, 0.5f);
         [SerializeField] private Color targetHighlightColor = new Color(0.3f, 1f, 0.3f, 0.5f);
         [SerializeField] private Color noLegalMoveHighlightColor = new Color(1f, 0.2f, 0.2f, 0.5f);
+        [SerializeField] private Color originHintColor = new Color(1f, 1f, 1f, 0.4f);
         [SerializeField] private float highlightDiameterToSpacingRatio = 1.05f;
 
         [Header("Point Anchor Generator (world units, from board center)")]
@@ -141,6 +142,22 @@ namespace Backgammon.Unity
             {
                 Transform targetAnchor = ResolveAnchor(target, currentPlayer);
                 SpawnHighlight(targetAnchor, targetHighlightColor);
+            }
+        }
+
+        /// <summary>
+        /// Redraws the highlight markers to show every origin (a point index, or null for the
+        /// bar) that has at least one legal move — a "here's where you can start" hint shown
+        /// before the player has selected anything.
+        /// </summary>
+        public void SetOriginHints(Player currentPlayer, IReadOnlyList<int?> origins)
+        {
+            ClearHighlights();
+
+            foreach (int? origin in origins)
+            {
+                Transform anchor = origin.HasValue ? _pointAnchors[origin.Value] : _barAnchors[(int)currentPlayer];
+                SpawnHighlight(anchor, originHintColor);
             }
         }
 

@@ -28,10 +28,12 @@ namespace Backgammon.Unity
         {
             pointAction.action.Enable();
             clickAction.action.Enable();
+            gameController.Changed += RefreshHighlights;
         }
 
         private void OnDisable()
         {
+            gameController.Changed -= RefreshHighlights;
             clickAction.action.Disable();
             pointAction.action.Disable();
         }
@@ -77,23 +79,42 @@ namespace Backgammon.Unity
 
         private void RefreshHighlights()
         {
-            if (!_hasSelection)
+            Player current = gameController.CurrentPlayer;
+
+            if (_hasSelection)
             {
-                boardView.ClearHighlights();
+                var targets = new List<int>();
+                foreach (Move move in gameController.GetLegalMoves())
+                {
+                    if (move.From == _selectedFrom && !targets.Contains(move.To))
+                    {
+                        targets.Add(move.To);
+                    }
+                }
+
+                boardView.SetHighlights(current, _selectedFrom, targets);
                 return;
             }
 
-            Player current = gameController.CurrentPlayer;
-            var targets = new List<int>();
+            // Nothing selected yet — hint every origin (checker or bar) the player could start
+            // a move from, so they don't have to click blind to find out what's playable.
+            var origins = new List<int?>();
             foreach (Move move in gameController.GetLegalMoves())
             {
-                if (move.From == _selectedFrom && !targets.Contains(move.To))
+                if (!origins.Contains(move.From))
                 {
-                    targets.Add(move.To);
+                    origins.Add(move.From);
                 }
             }
 
-            boardView.SetHighlights(current, _selectedFrom, targets);
+            if (origins.Count > 0)
+            {
+                boardView.SetOriginHints(current, origins);
+            }
+            else
+            {
+                boardView.ClearHighlights();
+            }
         }
 
         private void TrySelectOrigin(Vector2 worldPosition)

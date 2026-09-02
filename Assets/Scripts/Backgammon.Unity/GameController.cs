@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Backgammon.Core;
 using UnityEngine;
@@ -57,6 +58,9 @@ namespace Backgammon.Unity
         /// <summary>The moves legal to play right now; empty outside the current player's move phase.</summary>
         public IReadOnlyList<Move> GetLegalMoves() => _engine.GetLegalMoves();
 
+        /// <summary>Raised after every roll, move, or turn change — mirrors the engine's own event for read-only observers like InputController.</summary>
+        public event Action Changed;
+
         /// <summary>
         /// Attempts to play a move from the given origin (null = bar) to the given destination.
         /// Returns false without changing anything if no legal move matches.
@@ -93,6 +97,7 @@ namespace Backgammon.Unity
         private void HandleEngineChanged()
         {
             RenderAll();
+            Changed?.Invoke();
         }
 
         private void RenderAll()
