@@ -14,6 +14,10 @@ namespace Backgammon.Unity
     [RequireComponent(typeof(SpriteRenderer))]
     public class BoardView : MonoBehaviour
     {
+        // Borne-off checkers pack into fixed-height columns (3 columns of 5 for a full 15)
+        // rather than one 15-tall stack. Points and the bar keep the single growing column.
+        private const int BorneOffCheckersPerColumn = 5;
+
         [Header("Checker art")]
         [SerializeField] private Sprite whiteCheckerSprite;
         [SerializeField] private Sprite blackCheckerSprite;
@@ -46,7 +50,7 @@ namespace Backgammon.Unity
         [Range(0f, 6f)]
         [SerializeField] private float generatorOffX = 5.5f;
         [Tooltip("Vertical distance from the board's center line to each player's borne-off tray.")]
-        [Range(0f, 6f)]
+        [Range(0f, 10f)]
         [SerializeField] private float generatorOffY = 2.5f;
 
         private Transform[] _pointAnchors;
@@ -54,6 +58,7 @@ namespace Backgammon.Unity
         private Transform[] _offAnchors;
         private float _checkerDiameter;
         private float _hitRadius;
+        private float _offHitHalfWidth;
         private float _highlightDiameter;
         private Sprite _highlightSprite;
         private Transform _checkersParent;
@@ -68,6 +73,9 @@ namespace Backgammon.Unity
             float spacing = Vector3.Distance(_pointAnchors[0].position, _pointAnchors[1].position);
             _checkerDiameter = spacing * checkerDiameterToSpacingRatio;
             _hitRadius = spacing * 0.5f;
+            // The borne-off grid is 3 columns spread a diameter apart, so its clickable column
+            // spans ~1.5 diameters either side of the anchor (a full diameter plus a checker radius).
+            _offHitHalfWidth = _checkerDiameter * 1.5f;
             _highlightDiameter = spacing * highlightDiameterToSpacingRatio;
             _highlightSprite = CreateHighlightSprite();
 
@@ -120,7 +128,7 @@ namespace Backgammon.Unity
                 Transform offAnchor = _offAnchors[(int)player];
                 for (int stack = 0; stack < board.GetBorneOff(player); stack++)
                 {
-                    SpawnChecker(offAnchor, stack, player);
+                    SpawnChecker(offAnchor, stack, player, BorneOffCheckersPerColumn);
                 }
             }
         }
@@ -248,7 +256,11 @@ namespace Backgammon.Unity
         {
             foreach (Player player in new[] { Player.White, Player.Black })
             {
-                if (IsWithinStackColumn(_offAnchors[(int)player].position, worldPosition))
+                // The borne-off grid grows rightward from the anchor, so test around a point
+                // shifted one diameter right — that centers the ~3-diameter-wide hit column on
+                // the 3 columns of checkers instead of on the (leftmost) anchor.
+                Vector3 hitCenter = _offAnchors[(int)player].position + new Vector3(_checkerDiameter, 0f, 0f);
+                if (IsWithinStackColumn(hitCenter, worldPosition, _offHitHalfWidth))
                 {
                     return player;
                 }
@@ -259,9 +271,14 @@ namespace Backgammon.Unity
         // Checkers stack outward from an anchor toward the board's center line (see SpawnChecker's
         // stackDirection), so a click anywhere in that column — not just on the anchor itself —
         // should count as a hit on whatever checker/point/tray it belongs to.
-        private bool IsWithinStackColumn(Vector3 anchorPosition, Vector2 worldPosition)
+        private bool IsWithinStackColumn(Vector3 anchorPosition, Vector2 worldPosition, float halfWidth = -1f)
         {
-            if (Mathf.Abs(anchorPosition.x - worldPosition.x) > _hitRadius)
+            if (halfWidth < 0f)
+            {
+                halfWidth = _hitRadius;
+            }
+
+            if (Mathf.Abs(anchorPosition.x - worldPosition.x) > halfWidth)
             {
                 return false;
             }
@@ -313,14 +330,22 @@ namespace Backgammon.Unity
             }
         }
 
-        private void SpawnChecker(Transform anchor, int stackIndex, Player owner)
+        // perColumn > 0 lays checkers out in fixed-height columns (borne-off tray); 0 keeps the
+        // single vertical stack used by points and the bar. The first column sits right on the
+        // anchor (the highlight position) and each next column steps a full diameter to the right.
+        private void SpawnChecker(Transform anchor, int stackIndex, Player owner, int perColumn = 0)
         {
             float stackDirection = anchor.localPosition.y >= 0f ? -1f : 1f;
             float stepDistance = _checkerDiameter * checkerStackStepRatio;
 
+            int column = perColumn > 0 ? stackIndex / perColumn : 0;
+            int row = perColumn > 0 ? stackIndex % perColumn : stackIndex;
+            float columnOffset = column * _checkerDiameter;
+
             var checker = new GameObject($"Checker_{owner}");
             checker.transform.SetParent(_checkersParent, true);
-            checker.transform.position = anchor.position + new Vector3(0f, stackDirection * stepDistance * stackIndex, 0f);
+            checker.transform.position = anchor.position
+                + new Vector3(columnOffset, stackDirection * stepDistance * row, 0f);
 
             var renderer = checker.AddComponent<SpriteRenderer>();
             renderer.sprite = owner == Player.White ? whiteCheckerSprite : blackCheckerSprite;
@@ -475,9 +500,11 @@ namespace Backgammon.Unity
         }
 
         // Sits beyond the rightmost point column, one tray per player above/below center.
+        // Black's tray is the top half (checkers stack downward toward center), White's the
+        // bottom half (stack upward) — matching each player's home-board half of the board.
         private Vector3 ComputeOffAnchorLocalPosition(Player owner)
         {
-            float y = owner == Player.White ? generatorOffY : -generatorOffY;
+            float y = owner == Player.White ? -generatorOffY : generatorOffY;
             return new Vector3(generatorOffX, y, 0f);
         }
     }
